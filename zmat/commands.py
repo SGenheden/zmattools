@@ -6,8 +6,10 @@ from __future__ import division, print_function, absolute_import
 import argparse
 import sys
 
+import numpy as np
 from parmed.periodic_table import Element
 from parmed.topologyobjects import Bond, Angle, Dihedral
+from parmed.geometry import _get_coords_from_atom_or_tuple, _cross
 
 import zmat.mol as mol
 
@@ -61,13 +63,37 @@ class GenerateZmat(ZmatCommand) :
                 if i > 0:
                     a2 = graph.structure.view["@%s" % zatoms[1]].atoms[0]
                     bond = Bond(a1, a2)
-                    sys.stdout.write("%2d %5.3f" % (atoms.index(zatoms[1]) + 1, bond.measure()))
+                    sys.stdout.write("%3d %5.3f" % (atoms.index(zatoms[1]) + 1, bond.measure()))
                 if i > 1:
                     a3 = graph.structure.view["@%s" % zatoms[2]].atoms[0]
                     angle = Angle(a1, a2, a3)
-                    sys.stdout.write("%2d %8.3f" % (atoms.index(zatoms[2]) + 1, angle.measure()))
+                    sys.stdout.write("%3d %8.3f" % (atoms.index(zatoms[2]) + 1, angle.measure()))
                 if i > 2:
                     a4 = graph.structure.view["@%s" % zatoms[3]].atoms[0]
-                    dihedral = Dihedral(a1, a2, a3, a4)
-                    sys.stdout.write("%2d %8.3f" % (atoms.index(zatoms[3]) + 1, dihedral.measure()))
+                    sys.stdout.write("%3d %8.3f" % (atoms.index(zatoms[3]) + 1, self._dihedral(a1,a2,a3,a4)))
                 print("")
+
+    def _dihedral(self, a1, a2, a3, a4) :
+        """
+        Calculates the dihedral angle between four atoms
+        Taken from parmed, but modified to get correct sign
+        """
+
+        p = np.array([_get_coords_from_atom_or_tuple(a1),
+                  _get_coords_from_atom_or_tuple(a2),
+                  _get_coords_from_atom_or_tuple(a3),
+                  _get_coords_from_atom_or_tuple(a4)])
+        v1 = p[1] - p[0]
+        v2 = p[1] - p[2]
+        v3 = p[3] - p[2]
+        # Take the cross product between v1-v2 and v2-v3
+        v1xv2 = _cross(v1, v2)
+        v2xv3 = _cross(v2, v3)
+        # Now find the angle between these cross-products
+        l1 = np.sqrt(np.dot(v1xv2, v1xv2))
+        l2 = np.sqrt(np.dot(v2xv3, v2xv3))
+        cosa = np.dot(v1xv2, v2xv3) / (l1 * l2)
+        if np.dot(v3, np.cross(v1, v2)) <= 0.0 :
+            return np.degrees(np.arccos(cosa))
+        else :
+            return -np.degrees(np.arccos(cosa))

@@ -15,5 +15,5 @@ setup (
 
     packages=['zmat',],
     entry_points={'console_scripts': ['zmat = zmat.tools:main_zmat', ]},
-    install_requires=['parmed','networkx'],
+    install_requires=['numpy','parmed','networkx'],
 )
