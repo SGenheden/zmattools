@@ -9,9 +9,12 @@ from __future__ import division, print_function, absolute_import
 
 import sys
 
+import numpy as np
 import networkx as nx
 import parmed
 from parmed.structure import Structure
+
+from zmat import geo
 
 class NodeAtom(object):
     """
@@ -108,6 +111,27 @@ class NodeAtom(object):
 class GraphStructure(object) :
     """
     Class to encapsulate a structure that is also a graph
+
+    Attributes
+    ----------
+    graph : networkx.Graph
+        the network Graph object
+    names : list of string
+        the names of the atoms in the original order
+    names_sorted : list of string
+        the names of the atoms sorted by centrality
+    nodes : dictionary of string : NodeAtom
+        the NodeAtom objects for each atom
+    structure : parmed.Structure
+        the initialized structure
+    verbosity : int
+        the verbosity level
+    zmat : list of string
+        the z-matrix
+    zatoms : list of parmed.Atom
+        the Atom object for each atom item in the z-matrix
+    znames : list of string
+        the names of the first atom in each row of the z-matrix
     """
     def __init__(self, verbosity=0) :
         self._initialized = False
@@ -117,6 +141,8 @@ class GraphStructure(object) :
         self.graph = None
         self.structure = None
         self.zmat = []
+        self.zatoms = []
+        self.znames = []
         self.verbosity = verbosity
 
     def initialize(self, input) :
@@ -168,6 +194,35 @@ class GraphStructure(object) :
 
         self._initialized = True
 
+    def read_zmat(self, input):
+        """
+        Read a z-matrix from either a filename of from a filehandle
+        """
+
+        if not self._initialized :
+            raise Exception("Function initialize() has not been called!")
+
+        ownf = not isinstance(input, file)
+        if ownf :
+            input = open(input, "r")
+
+        lines = input.readlines()
+        if ownf :
+            input.close()
+
+        self.znames = []
+        for line in lines :
+            names = line.strip().split()
+            if not names[0] in self.names :
+                # This is the only check that is made to ensure that the z-matrix
+                # is correct
+                raise Exception(
+                    "Could not find %d among the initialized atoms"%names[0])
+            self.nodes[names[0]].zmat = names[1:]
+            self.znames.append(names[0])
+
+        self._set_zmat()
+
     def _define_atom(self, current, previous, defined, terminal):
         """
         Define a new atom in the z-matrix
@@ -175,14 +230,14 @@ class GraphStructure(object) :
 
         defined[current] = True
         # Trivial definition for the first 3 atoms
-        if len(self.zmat) == 0:
+        if len(self.znames) == 0:
             self.nodes[current].zmat = "DM3 DM2 DM1".split()
-        elif len(self.zmat) == 1 or (len(self.zmat) == 2 and not terminal):
+        elif len(self.znames) == 1 or (len(self.znames) == 2 and not terminal):
             self.nodes[current].zmat = self.nodes[previous].zmat[:2]
             self.nodes[current].zmat.insert(0, previous)
         # special logical if third atom is terminal, should only occur
         # in molecules like methane
-        elif len(self.zmat) == 2 and terminal:
+        elif len(self.znames) == 2 and terminal:
             a2 = self.nodes[previous].backward_bond([current, previous], defined)
             self.nodes[current].zmat = ("%s %s %s" % (previous, a2, "DM3")).split()
         # for the other atoms, let's see if we should define
@@ -203,7 +258,7 @@ class GraphStructure(object) :
 
         if self.verbosity > 1:
             sys.stdout.write(" "+current)
-        self.zmat.append(current + " " + " ".join(self.nodes[current].zmat))
+        self.znames.append(current)
 
     def traverse(self) :
         """
@@ -214,7 +269,7 @@ class GraphStructure(object) :
             raise Exception("Function initialize() has not been called!")
 
         defined = {node:False for node in self.nodes}
-        self.zmat = []
+        self.znames = []
 
         if self.verbosity > 1:
             print("Traversal of the molecular graph:")
@@ -265,9 +320,65 @@ class GraphStructure(object) :
                 # done!
                 if not found:
                     break
+
+        self._set_zmat()
+
+    def _set_zmat(self) :
+        """
+        Creates the zmat and zatoms attributes after the z-matrix ha been
+        created or loaded from file.
+        """
+        self.zmat = []
+        self.zatoms = []
+
+        for i, name in enumerate(self.znames):
+            row = [name, self.nodes[name].zmat[0], self.nodes[name].zmat[1],
+                        self.nodes[name].zmat[2]]
+            self.zmat.append(row)
+            atoms = [self.structure.view["@%s" % row[0]].atoms[0]]
+            if i > 0 :
+                a2 = self.structure.view["@%s" % row[1]].atoms[0]
+                atoms.append(a2)
+            if i > 1:
+                a3 = self.structure.view["@%s" % row[2]].atoms[0]
+                atoms.append(a3)
+            if i > 2:
+                a4 = self.structure.view["@%s" % row[3]].atoms[0]
+                atoms.append(a4)
+            self.zatoms.append(atoms)
+
         if self.verbosity > 0:
             print("")
             print("\nZ-matrix:")
-            for z in self.zmat:
-                print(z)
+            for row in self.zmat:
+                print(" ".join(row))
             print("")
+
+    def zvalues(self) :
+        """
+        Computes and returns the values of the internal coordinates
+
+        Returns
+        ------
+        (nx3) ndarray
+            the internal coordinates
+        """
+
+        if len(self.zmat) == 0 :
+            raise Exception("The z-matrix does not seem to be filled")
+
+        zval = np.zeros((len(self.zmat),3))
+        zval[0,0] = np.nan
+        zval[0,1] = np.nan
+        zval[0,2] = np.nan
+        zval[1,1] = np.nan
+        zval[1,2] = np.nan
+        zval[2,2] = np.nan
+
+        for i, atoms in enumerate(self.zatoms[1:],1):
+            zval[i,0] = geo.distance(atoms[0], atoms[1])
+            if i > 1:
+                zval[i,1] = geo.angle(atoms[0], atoms[1], atoms[2])
+            if i > 2:
+                zval[i,2] = geo.dihedral(atoms[0], atoms[1], atoms[2], atoms[3])
+        return zval
