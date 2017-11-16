@@ -4,8 +4,9 @@ Classes to perform geometric calculations
 from __future__ import division, print_function, absolute_import
 
 import numpy as np
-from parmed.topologyobjects import Bond, Angle
-from parmed.geometry import _get_coords_from_atom_or_tuple, _cross
+from parmed.topologyobjects import Atom, Bond, Angle
+from parmed.geometry import _cross
+from parmed.geometry import _get_coords_from_atom_or_tuple as atom2coords
 
 def angle(a1, a2, a3) :
     """
@@ -49,6 +50,8 @@ def build_xyz(bndatm, angatm, dihedatm, blen, ang, dih) :
     """
 
     ang = np.radians(ang)
+    if dih < 0 :
+        dih += 360
     dih = np.radians(dih)
     blen = blen
 
@@ -86,10 +89,7 @@ def dihedral(a1, a2, a3, a4) :
         the dihedral in degrees
     """
 
-    p = np.array([_get_coords_from_atom_or_tuple(a1),
-              _get_coords_from_atom_or_tuple(a2),
-              _get_coords_from_atom_or_tuple(a3),
-              _get_coords_from_atom_or_tuple(a4)])
+    p = np.array([atom2coords(a1), atom2coords(a2),  atom2coords(a3), atom2coords(a4)])
     v1 = p[1] - p[0]
     v2 = p[1] - p[2]
     v3 = p[3] - p[2]
@@ -121,10 +121,66 @@ def distance(a1, a2) :
     """
     return Bond(a1, a2).measure()
 
+def internal2cartesian(zvalues, zatoms, make_dummies=False) :
+    """
+    Transform internal coordinates to Cartesian coordinates
+
+    Updates the zatoms xx, xy and xz properties
+
+    Parameters
+    ----------
+    zvalues : (nx3) ndarray
+        the values of the internal coordinates
+    zatoms : list of parmed.Atom
+        the atoms with the Cartesian coordinates
+    dummies : bool, optional
+        make dummy atoms and insert them in the zvalues and zatoms arrays
+    """
+
+    if make_dummies :
+        xyz0 = np.asarray([atom2coords(atoms[0]) for atoms in zatoms])
+        major, minor = majorminor_axis(xyz0)
+        center = xyz0.mean(axis=0)
+
+        dm3 = Atom(name="DM3")
+        dm3.xx = center[0]+minor[0]
+        dm3.xy = center[1]+minor[1]
+        dm3.xz = center[2]+minor[2]
+
+        dm2 = Atom(name="DM2")
+        dm2.xx = center[0]+major[0]
+        dm2.xy = center[1]+major[1]
+        dm2.xz = center[2]+major[2]
+
+        dm1 = Atom(name="DM1")
+        dm1.xx = center[0]
+        dm1.xy = center[1]
+        dm1.xz = center[2]
+
+        zatoms[0] = [zatoms[0][0], dm3, dm2, dm1]
+        zatoms[1] = [zatoms[1][0], zatoms[1][1], dm3, dm2]
+        zatoms[2] = [zatoms[2][0], zatoms[2][1], zatoms[2][2], dm3]
+
+        zvalues[0,0] = distance(zatoms[0][0], zatoms[0][1])
+        zvalues[0,1] = angle(zatoms[0][0], zatoms[0][1], zatoms[0][2])
+        zvalues[0,2] = dihedral(zatoms[0][0], zatoms[0][1], zatoms[0][2], zatoms[0][3])
+        zvalues[1,1] = angle(zatoms[1][0], zatoms[1][1], zatoms[1][2])
+        zvalues[1,2] = dihedral(zatoms[1][0], zatoms[1][1], zatoms[1][2], zatoms[1][3])
+        zvalues[2,2] = dihedral(zatoms[2][0], zatoms[2][1], zatoms[2][2], zatoms[2][3])
+
+    for i, (zval, atoms) in enumerate(zip(zvalues,zatoms)) :
+        xyz = build_xyz(np.asarray(atom2coords(atoms[1])),
+                            np.asarray(atom2coords(atoms[2])),
+                            np.asarray(atom2coords(atoms[3])),
+                            zval[0], zval[1], zval[2])
+        atoms[0].xx = xyz[0]
+        atoms[0].xy = xyz[1]
+        atoms[0].xz = xyz[2]
+
 def majorminor_axis(xyz) :
     """
     Calculates the major and minor axis of a molecule
-    
+
     Parameters
     ----------
     xyz : (nx3) ndarray
@@ -139,7 +195,7 @@ def majorminor_axis(xyz) :
     """
     def posneg_vec(vec1, vec2, posvec, negvec, npos, nneg) :
 
-        vlen = vlen3(vec1)*vlen3(vec2)
+        vlen = np.sqrt((vec1**2).sum())*np.sqrt((vec2**2).sum())
         vec = (vec1*vec2).sum()
         ang = np.degrees(np.arccos(vec/vlen))
         if ang > 360.0 : ang = ang - 360.0
@@ -198,7 +254,7 @@ def majorminor_axis(xyz) :
     nneg = 0
     for i in range(xyz.shape[0]) :
         vec = xyz[i,:] - center
-        posvec,negvec,npos,nneg = posneg_vec(major,vec,posvec,negvec,npos,nneg,0)
+        posvec,negvec,npos,nneg = posneg_vec(major,vec,posvec,negvec,npos,nneg)
 
     minor_tmp = assign_vec(posvec,negvec,npos,nneg)
     majlen2 = (major**2).sum()

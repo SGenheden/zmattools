@@ -5,9 +5,12 @@ Tools to generate and manipulate z-matrices
 
 Description
 ===========
-zmatools is a package for generating a z-matrix of a small molecules
+zmatools is a package for generating and manipulate the z-matrix of a small molecules
 
-Currently this is the only "tool", but plans are to add more functionality
+Currently it has two tools:
+1.) Generating the z-matrix from a structure file
+2.) Producing a trajectory when each dihedral is sampled in a specific range,
+assuming the rest of the atoms are fixed.
 
 Installation
 ============
@@ -42,4 +45,19 @@ To obtain verbose information on the z-matrix generation
 
 ```
 zmat generate model0.mol2 --verbosity 2
+```
+
+To produce a dihedral trajectory in the range -180 to 180 in 15 degrees increment
+
+```
+zmat traj model0.mol2
+```
+
+the trajectories will be in xyz-formats in ``model0_dihed_traj4.xyz``,
+``model0_dihed_traj5.xyz``etc.
+
+To produce a dihedral trajectory in the range -180 to 180 in 30 degrees increment
+
+```
+zmat traj model0.mol2 -d 30
 ```
