@@ -8,9 +8,9 @@ Description
 zmatools is a package for generating and manipulate the z-matrix of a small molecules
 
 Currently it has two tools:
-1.) Generating the z-matrix from a structure file
-2.) Producing a trajectory when each dihedral is sampled in a specific range,
-assuming the rest of the atoms are fixed.
+
+1. Generating the z-matrix from a structure file
+2. Producing a trajectory when each dihedral is sampled in a specific range, assuming the rest of the atoms are fixed.
 
 Installation
 ============
