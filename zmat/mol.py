@@ -13,8 +13,7 @@ import numpy as np
 import networkx as nx
 import parmed
 from parmed.structure import Structure
-
-from zmat import geo
+from parmed import geometry
 
 class NodeAtom(object):
     """
@@ -376,9 +375,9 @@ class GraphStructure(object) :
         zval[2,2] = np.nan
 
         for i, atoms in enumerate(self.zatoms[1:],1):
-            zval[i,0] = geo.distance(atoms[0], atoms[1])
+            zval[i,0] = np.sqrt(geometry.distance2(atoms[0], atoms[1]))
             if i > 1:
-                zval[i,1] = geo.angle(atoms[0], atoms[1], atoms[2])
+                zval[i,1] = geometry.angle(atoms[0], atoms[1], atoms[2])
             if i > 2:
-                zval[i,2] = geo.dihedral(atoms[0], atoms[1], atoms[2], atoms[3])
+                zval[i,2] = geometry.dihedral(atoms[0], atoms[1], atoms[2], atoms[3])
         return zval

@@ -4,25 +4,8 @@ Classes to perform geometric calculations
 from __future__ import division, print_function, absolute_import
 
 import numpy as np
-from parmed.topologyobjects import Atom, Bond, Angle
-from parmed.geometry import _cross
+from parmed.topologyobjects import Atom
 from parmed.geometry import _get_coords_from_atom_or_tuple as atom2coords
-
-def angle(a1, a2, a3) :
-    """
-    Calculate the angle between three distances
-
-    Parameters
-    ----------
-    a1, a2, a3 : parmed.Atom
-        the atoms
-
-    Returns
-    -------
-    float
-        the angle in degrees
-    """
-    return Angle(a1, a2, a3).measure()
 
 def build_xyz(bndatm, angatm, dihedatm, blen, ang, dih) :
     """
@@ -72,54 +55,6 @@ def build_xyz(bndatm, angatm, dihedatm, blen, ang, dih) :
     xyz[2] = vx[2]*xbs + vy[2]*ybs + vz[2]*zbs + bndatm[2]
 
     return xyz
-
-def dihedral(a1, a2, a3, a4) :
-    """
-    Calculates the dihedral angle between four atoms
-    Taken from parmed, but modified to get correct sign
-
-    Parameters
-    ----------
-    a1, a2, a3, a4 : parmed.Atom
-        the atoms
-
-    Returns
-    -------
-    float
-        the dihedral in degrees
-    """
-
-    p = np.array([atom2coords(a1), atom2coords(a2),  atom2coords(a3), atom2coords(a4)])
-    v1 = p[1] - p[0]
-    v2 = p[1] - p[2]
-    v3 = p[3] - p[2]
-    # Take the cross product between v1-v2 and v2-v3
-    v1xv2 = _cross(v1, v2)
-    v2xv3 = _cross(v2, v3)
-    # Now find the angle between these cross-products
-    l1 = np.sqrt(np.dot(v1xv2, v1xv2))
-    l2 = np.sqrt(np.dot(v2xv3, v2xv3))
-    cosa = np.dot(v1xv2, v2xv3) / (l1 * l2)
-    if np.dot(v3, np.cross(v1, v2)) <= 0.0 :
-        return np.degrees(np.arccos(cosa))
-    else :
-        return -np.degrees(np.arccos(cosa))
-
-def distance(a1, a2) :
-    """
-    Calculate the bond distance between two distances
-
-    Parameters
-    ----------
-    a1, a2 : parmed.Atom
-        the atoms
-
-    Returns
-    -------
-    float
-        the distance in Angstroms
-    """
-    return Bond(a1, a2).measure()
 
 def internal2cartesian(zvalues, zatoms, make_dummies=False) :
     """
