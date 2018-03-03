@@ -4,6 +4,7 @@ Classes to perform geometric calculations
 from __future__ import division, print_function, absolute_import
 
 import numpy as np
+from parmed import geometry
 from parmed.topologyobjects import Atom
 from parmed.geometry import _get_coords_from_atom_or_tuple as atom2coords
 
@@ -96,12 +97,12 @@ def internal2cartesian(zvalues, zatoms, make_dummies=False) :
         zatoms[1] = [zatoms[1][0], zatoms[1][1], dm3, dm2]
         zatoms[2] = [zatoms[2][0], zatoms[2][1], zatoms[2][2], dm3]
 
-        zvalues[0,0] = distance(zatoms[0][0], zatoms[0][1])
-        zvalues[0,1] = angle(zatoms[0][0], zatoms[0][1], zatoms[0][2])
-        zvalues[0,2] = dihedral(zatoms[0][0], zatoms[0][1], zatoms[0][2], zatoms[0][3])
-        zvalues[1,1] = angle(zatoms[1][0], zatoms[1][1], zatoms[1][2])
-        zvalues[1,2] = dihedral(zatoms[1][0], zatoms[1][1], zatoms[1][2], zatoms[1][3])
-        zvalues[2,2] = dihedral(zatoms[2][0], zatoms[2][1], zatoms[2][2], zatoms[2][3])
+        zvalues[0,0] = np.sqrt(geometry.distance2(zatoms[0][0], zatoms[0][1]))
+        zvalues[0,1] = geometry.angle(zatoms[0][0], zatoms[0][1], zatoms[0][2])
+        zvalues[0,2] = geometry.dihedral(zatoms[0][0], zatoms[0][1], zatoms[0][2], zatoms[0][3])
+        zvalues[1,1] = geometry.angle(zatoms[1][0], zatoms[1][1], zatoms[1][2])
+        zvalues[1,2] = geometry.dihedral(zatoms[1][0], zatoms[1][1], zatoms[1][2], zatoms[1][3])
+        zvalues[2,2] = geometry.dihedral(zatoms[2][0], zatoms[2][1], zatoms[2][2], zatoms[2][3])
 
     for i, (zval, atoms) in enumerate(zip(zvalues,zatoms)) :
         xyz = build_xyz(np.asarray(atom2coords(atoms[1])),
