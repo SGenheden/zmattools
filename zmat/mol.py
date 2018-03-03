@@ -15,6 +15,11 @@ import parmed
 from parmed.structure import Structure
 from parmed import geometry
 
+if sys.version_info[0] == 3 :
+    string_types = str
+else:
+    string_types = basestring
+
 class NodeAtom(object):
     """
     Class to encapsulate an atom its connectivity
@@ -201,7 +206,7 @@ class GraphStructure(object) :
         if not self._initialized :
             raise Exception("Function initialize() has not been called!")
 
-        ownf = not isinstance(input, file)
+        ownf = isinstance(input, string_types)
         if ownf :
             input = open(input, "r")
 
