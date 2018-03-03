@@ -3,6 +3,10 @@ python:
     - "2.7"
     - "3.6"
 install:
+    - git clone https://github.com/ParmEd/ParmEd.git
+    - cd ParmEd
+    - python setup.py install
+    - cd ..
     - pip install .
     - python -c "import zmat; print(zmat.__version__)"
 script:
