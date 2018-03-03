@@ -3,6 +3,10 @@ zmattools
 
 Tools to generate and manipulate z-matrices
 
+Badges
+======
+[![Build/Test Status](https://travis-ci.org/SGenheden/zmattools.svg?branch=master)](https://travis-ci.org/SGenheden/zmattools)
+
 Description
 ===========
 zmatools is a package for generating and manipulate the z-matrix of a small molecules
