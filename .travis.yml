@@ -6,6 +6,7 @@ install:
     - git clone https://github.com/ParmEd/ParmEd.git
     - cd ParmEd
     - python setup.py install
+    - rm -fr ParmEd
     - cd ..
     - pip install .
     - python -c "import zmat; print(zmat.__version__)"
