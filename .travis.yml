@@ -15,5 +15,5 @@ script:
     - pytest
 after_success:
     - cd tests
-    - coverage run --source=seminario test_basics.py
+    - coverage run --source=zmat test_basics.py
     - coveralls
